@@ -45,7 +45,8 @@ where
                 sink,
                 params,
             )
-            .await;
+            .await
+            .inspect_err(|e| info!("Error handling accepted shadow logs subscription: {:?}", e));
         }
     });
 
@@ -77,6 +78,6 @@ async fn handle_accepted(
                 .map_err(|e| ErrorObject::owned::<()>(INTERNAL_ERROR_CODE, e.to_string(), None))?;
         }
     }
-
+    info!("Shadow logs subscription ended");
     Ok(())
 }
