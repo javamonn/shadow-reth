@@ -148,8 +148,13 @@ impl ShadowExEx {
                                 });
 
                             let _ = sqlite_db.bulk_insert_into_shadow_log_table(shadow_logs).await;
+                            info!("sending indexed block hashes: {:?}", block_hashes.len());
                             for block_hash in block_hashes {
-                                let _ = indexed_block_hash_sender.send(block_hash);
+                                info!("Sending indexed block hash: {}", block_hash);
+                                let _ =
+                                    indexed_block_hash_sender.send(block_hash).inspect_err(|e| {
+                                        info!("Failed to send indexed block hash: {}", e)
+                                    });
                             }
                         }
                     });
