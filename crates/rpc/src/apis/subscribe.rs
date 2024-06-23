@@ -12,6 +12,7 @@ use jsonrpsee::{
     PendingSubscriptionSink, SubscriptionMessage, SubscriptionSink,
 };
 use reth_provider::{BlockNumReader, BlockReaderIdExt};
+use reth_tracing::tracing::info;
 use serde::{Deserialize, Serialize};
 use shadow_reth_common::ShadowSqliteDb;
 use tokio::sync::broadcast::Receiver;
@@ -31,6 +32,7 @@ where
     P: BlockNumReader + BlockReaderIdExt + Clone + Unpin + 'static,
 {
     let sink = pending.accept().await?;
+    info!("Subscribing to shadow logs with params: {:?}", params);
     tokio::spawn({
         let provider = rpc.provider.clone();
         let sqlite_manager = rpc.sqlite_manager.clone();
@@ -57,11 +59,15 @@ async fn handle_accepted(
     accepted_sink: SubscriptionSink,
     params: SubscribeParameters,
 ) -> Result<(), ErrorObject<'static>> {
+    info!("Handling accepted shadow logs subscription");
     while let Ok(block_hash) = indexed_block_hash_receiver.recv().await {
+        info!("Received indexed block hash: {}", block_hash);
         let query_params =
             ValidatedQueryParams::from_subscribe_parameters(&provider, params.clone(), block_hash)?;
         let intermediate_results = exec_query(query_params, &sqlite_manager.pool).await?;
+        info!("Got {} intermediate results", intermediate_results.len());
         for result in intermediate_results.into_iter().map(RpcLog::from) {
+            info!("Sending shadow log: {:?}", result);
             let message = SubscriptionMessage::from_json(&result)
                 .map_err(|e| ErrorObject::owned::<()>(INTERNAL_ERROR_CODE, e.to_string(), None))?;
 
