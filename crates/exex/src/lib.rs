@@ -102,7 +102,11 @@ impl ShadowExEx {
                                         .unwrap_or_else(|| chain.first().number),
                                     database_provider.static_file_provider().clone(),
                                 ),
-                                chain.state_at_block(block.number).unwrap(),
+                                chain
+                                    .state_at_block(
+                                        block.number.checked_sub(1).unwrap_or(block.number),
+                                    )
+                                    .unwrap(),
                             );
                             // Use the database provider to create a [`ShadowDatabase`]. This is a
                             // [`reth_revm::Database`] implementation that will override the
