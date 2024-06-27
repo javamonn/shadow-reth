@@ -7,6 +7,7 @@ use reth_revm::{
     primitives::{AccountInfo, Bytecode},
     Database,
 };
+use reth_tracing::tracing::{debug, error, info};
 
 use crate::contracts::ShadowContracts;
 
@@ -91,6 +92,7 @@ impl<DB: StateProvider> DatabaseRef for ShadowDatabase<DB> {
                 .unwrap_or_else(|| account.bytecode_hash.unwrap_or(KECCAK_EMPTY)),
             code: self.shadow.code(&address),
         }))
+        .inspect_err(|e| info!("Failed to get basic account info: {:?}", e))
     }
 
     /// Retrieves the bytecode associated with a given code hash.
@@ -98,7 +100,12 @@ impl<DB: StateProvider> DatabaseRef for ShadowDatabase<DB> {
     /// Returns `Ok` with the bytecode if found, or the default bytecode otherwise.
     fn code_by_hash_ref(&self, code_hash: B256) -> Result<Bytecode, Self::Error> {
         Ok(self.shadow.code_by_hash(&code_hash).unwrap_or_else(|| {
-            self.bytecode_by_hash(code_hash).ok().flatten().unwrap_or_default().0
+            self.bytecode_by_hash(code_hash)
+                .inspect_err(|e| info!("Failed to get code hash: {:?}", e))
+                .ok()
+                .flatten()
+                .unwrap_or_default()
+                .0
         }))
     }
 
@@ -106,7 +113,11 @@ impl<DB: StateProvider> DatabaseRef for ShadowDatabase<DB> {
     ///
     /// Returns `Ok` with the storage value, or the default value if not found.
     fn storage_ref(&self, address: Address, index: U256) -> Result<U256, Self::Error> {
-        Ok(self.db.storage(address, B256::new(index.to_be_bytes()))?.unwrap_or_default())
+        Ok(self
+            .db
+            .storage(address, B256::new(index.to_be_bytes()))
+            .inspect_err(|e| info!("Failed to get storage info: {:?}", e))?
+            .unwrap_or_default())
     }
 
     /// Retrieves the block hash for a given block number.
