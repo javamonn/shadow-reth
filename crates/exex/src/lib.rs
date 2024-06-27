@@ -85,7 +85,10 @@ impl ShadowExEx {
                     // Create a read-only database provider that we can use to get historical state
                     // at the start of the notification chain. i.e. the state at the first block in
                     // the notification, pre-execution.
-                    let database_provider = ctx.provider().database_provider_ro()?;
+                    let database_provider = ctx
+                        .provider()
+                        .database_provider_ro()?
+                        .disable_long_read_transaction_safety();
 
                     info!("last_block_number: {:?}", database_provider.last_block_number());
 
