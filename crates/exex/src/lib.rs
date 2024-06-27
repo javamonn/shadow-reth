@@ -178,6 +178,7 @@ impl ShadowExEx {
                         .collect::<Vec<_>>();
 
                     // Create a new runtime to send the shadow logs to the shadow database.
+                    info!("Inserting shadow logs into shadow database: {} logs", shadow_logs.len());
                     tokio::spawn({
                         let sqlite_db = self.sqlite_db.clone();
                         async move {
