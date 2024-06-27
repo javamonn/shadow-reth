@@ -85,35 +85,33 @@ impl ShadowExEx {
                     // at the start of the notification chain. i.e. the state at the first block in
                     // the notification, pre-execution.
                     let database_provider = ctx.provider().database_provider_ro()?;
-                    let provider = BundleStateProvider::new(
-                        HistoricalStateProviderRef::new(
-                            database_provider.tx_ref(),
-                            chain
-                                .first()
-                                .number
-                                .checked_sub(1)
-                                .unwrap_or_else(|| chain.first().number),
-                            database_provider.static_file_provider().clone(),
-                        ),
-                        chain.state_at_block(chain.first().number).unwrap(),
-                    );
-
-                    // Use the database provider to create a [`ShadowDatabase`]. This is a
-                    // [`reth_revm::Database`] implementation that will override the
-                    // bytecode of contracts at specific addresses with custom shadow bytecode, as
-                    // defined in `shadow.json`.
-                    let db = ShadowDatabase::new(provider, self.contracts.clone());
 
                     let blocks = chain.blocks_iter().collect::<Vec<_>>();
-
-                    // Construct a new `ShadowExecutor` with the default config and proper chain
-                    // spec, using the `ShadowDatabase` as the state provider.
-                    let mut executor = ShadowExecutor::new(db);
 
                     // Execute the blocks in the chain, collecting logs from shadowed contracts.
                     let shadow_logs = blocks
                         .into_iter()
                         .map(|block| {
+                            let provider = BundleStateProvider::new(
+                                HistoricalStateProviderRef::new(
+                                    database_provider.tx_ref(),
+                                    chain
+                                        .first()
+                                        .number
+                                        .checked_sub(1)
+                                        .unwrap_or_else(|| chain.first().number),
+                                    database_provider.static_file_provider().clone(),
+                                ),
+                                chain.state_at_block(block.number).unwrap(),
+                            );
+                            // Use the database provider to create a [`ShadowDatabase`]. This is a
+                            // [`reth_revm::Database`] implementation that will override the
+                            // bytecode of contracts at specific addresses with custom shadow bytecode, as
+                            // defined in `shadow.json`.
+                            let db = ShadowDatabase::new(provider, self.contracts.clone());
+                            // Construct a new `ShadowExecutor` with the default config and proper chain
+                            // spec, using the `ShadowDatabase` as the state provider.
+                            let mut executor = ShadowExecutor::new(db);
                             executor.execute_one(block.clone().unseal(), ctx.config.chain.clone())
                         })
                         .collect::<Result<Vec<_>>>()?
