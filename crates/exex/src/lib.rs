@@ -85,6 +85,20 @@ impl ShadowExEx {
                     // Create a read-only database provider that we can use to get historical state
                     // at the start of the notification chain. i.e. the state at the first block in
                     // the notification, pre-execution.
+                    let database_provider = ctx.provider().database_provider_ro()?;
+                    let state_provider = HistoricalStateProviderRef::new(
+                        database_provider.tx_ref(),
+                        chain.first().number.checked_sub(1).unwrap_or_else(|| chain.first().number),
+                        database_provider.static_file_provider().clone(),
+                    );
+                    // Use the database provider to create a [`ShadowDatabase`]. This is a
+                    // [`reth_revm::Database`] implementation that will override the
+                    // bytecode of contracts at specific addresses with custom shadow bytecode, as
+                    // defined in `shadow.json`.
+                    let db = ShadowDatabase::new(state_provider, self.contracts.clone());
+                    // Construct a new `ShadowExecutor` with the default config and proper chain
+                    // spec, using the `ShadowDatabase` as the state provider.
+                    let mut executor = ShadowExecutor::new(db);
 
                     let blocks = chain.blocks_iter().collect::<Vec<_>>();
 
@@ -92,10 +106,6 @@ impl ShadowExEx {
                     let shadow_logs = blocks
                         .into_iter()
                         .map(|block| {
-                            let database_provider = ctx
-                                .provider()
-                                .database_provider_ro()?
-                                .disable_long_read_transaction_safety();
                             info!(
                                 "Executing block: number: {}, tip block: {}",
                                 block.number,
@@ -120,32 +130,10 @@ impl ShadowExEx {
                                     .checked_sub(1)
                                     .and_then(|n| chain.state_at_block(n))
                                 {
-                                    Some(state) => {
-                                        let provider = BundleStateProvider::new(
-                                            HistoricalStateProviderRef::new(
-                                                database_provider.tx_ref(),
-                                                block
-                                                    .number
-                                                    .checked_sub(1)
-                                                    .unwrap_or_else(|| block.number),
-                                                database_provider.static_file_provider().clone(),
-                                            ),
-                                            state,
-                                        );
-                                        // Use the database provider to create a [`ShadowDatabase`]. This is a
-                                        // [`reth_revm::Database`] implementation that will override the
-                                        // bytecode of contracts at specific addresses with custom shadow bytecode, as
-                                        // defined in `shadow.json`.
-                                        let db =
-                                            ShadowDatabase::new(provider, self.contracts.clone());
-                                        // Construct a new `ShadowExecutor` with the default config and proper chain
-                                        // spec, using the `ShadowDatabase` as the state provider.
-                                        let mut executor = ShadowExecutor::new(db);
-                                        executor.execute_one(
-                                            block.clone().unseal(),
-                                            ctx.config.chain.clone(),
-                                        )
-                                    }
+                                    Some(state) => executor.execute_one(
+                                        block.clone().unseal(),
+                                        ctx.config.chain.clone(),
+                                    ),
                                     None => {
                                         let provider = HistoricalStateProviderRef::new(
                                             database_provider.tx_ref(),

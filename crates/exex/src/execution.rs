@@ -9,7 +9,7 @@ use reth_primitives::{
 };
 use reth_provider::StateProvider;
 use reth_revm::{
-    db::{states::bundle_state::BundleRetention, State},
+    db::{states::bundle_state::BundleRetention, CacheDB, State},
     primitives::{
         CfgEnvWithHandlerCfg, EVMError, ExecutionResult, HashMap, ResultAndState, B256, U256,
     },
@@ -24,7 +24,7 @@ use crate::db::ShadowDatabase;
 /// Uses the [`ShadowDatabase`] to shadow the contracts from the provided `shadow.json`.
 #[derive(Debug)]
 pub(crate) struct ShadowExecutor<'a, DB: StateProvider> {
-    evm: Evm<'a, (), State<ShadowDatabase<DB>>>,
+    evm: Evm<'a, (), State<CacheDB<ShadowDatabase<DB>>>>,
 }
 
 /// Holds the result of a block execution, as well as important
@@ -75,7 +75,7 @@ impl<'a, DB: StateProvider> ShadowExecutor<'a, DB> {
     /// Creates a new instance of the ShadowExecutor
     pub(crate) fn new(db: ShadowDatabase<DB>) -> Self {
         let evm = EvmBuilder::default()
-            .with_db(StateBuilder::new_with_database(db).with_bundle_update().build())
+            .with_db(StateBuilder::new_with_database(CacheDB::new(db)).with_bundle_update().build())
             .build();
         Self { evm }
     }
@@ -143,7 +143,7 @@ impl<'a, DB: StateProvider> ShadowExecutor<'a, DB> {
 
 /// Configure EVM with the given header and chain spec.
 fn configure_evm<'a, DB: StateProvider>(
-    evm: &mut Evm<'a, (), State<ShadowDatabase<DB>>>,
+    evm: &mut Evm<'a, (), State<CacheDB<ShadowDatabase<DB>>>>,
     chain: Arc<ChainSpec>,
     header: &Header,
 ) {
