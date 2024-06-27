@@ -88,15 +88,20 @@ impl<DB: StateProvider> DatabaseRef for ShadowDatabase<DB> {
     /// Returns `Ok` with `Some(AccountInfo)` if the account exists,
     /// `None` if it doesn't, or an error if encountered.
     fn basic_ref(&self, address: Address) -> Result<Option<AccountInfo>, Self::Error> {
-        Ok(self.db.basic_account(address)?.map(|account| AccountInfo {
-            balance: account.balance,
-            nonce: account.nonce,
-            code_hash: self
-                .shadow
-                .code_hash(&address) // Check if the address is a shadow contract, and use that code hash
-                .unwrap_or_else(|| account.bytecode_hash.unwrap_or(KECCAK_EMPTY)),
-            code: self.shadow.code(&address),
-        }))
+        Ok(self
+            .db
+            .basic_account(address)
+            .inspect(|r| debug!("Basic account info for {:?}: {:?}", address, r))
+            .inspect_err(|e| info!("Failed to get basic account info: {:?}", e))?
+            .map(|account| AccountInfo {
+                balance: account.balance,
+                nonce: account.nonce,
+                code_hash: self
+                    .shadow
+                    .code_hash(&address) // Check if the address is a shadow contract, and use that code hash
+                    .unwrap_or_else(|| account.bytecode_hash.unwrap_or(KECCAK_EMPTY)),
+                code: self.shadow.code(&address),
+            }))
     }
 
     /// Retrieves the bytecode associated with a given code hash.

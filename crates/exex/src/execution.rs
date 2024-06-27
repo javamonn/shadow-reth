@@ -116,18 +116,18 @@ impl<'a, DB: StateProvider> ShadowExecutor<'a, DB> {
                     Ok(result) => result,
                     Err(err) => match err {
                         EVMError::Transaction(err) => {
-                            debug!(%err, ?transaction, "Skipping invalid transaction");
+                            // debug!(%err, ?transaction, "Skipping invalid transaction");
                             continue;
                         }
                         err => {
-                            error!(%err, ?transaction, "Fatal error during transaction execution");
+                            // error!(%err, ?transaction, "Fatal error during transaction execution");
                             continue;
                         }
                     },
                 };
 
                 // FIXME: why is result.logs always empty?
-                info!("Executed transaction: {:?}, {:?}", transaction.hash, result);
+                // info!("Executed transaction: {:?}, {:?}", transaction.hash, result);
 
                 // Commit the state changes to the shadowed database, and store the result of the
                 // transaction.
