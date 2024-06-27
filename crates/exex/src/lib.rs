@@ -11,11 +11,13 @@ use std::path::PathBuf;
 
 use contracts::ShadowContracts;
 use execution::ShadowExecutor;
-use eyre::{eyre, Result};
+use eyre::{eyre, OptionExt, Result};
 use futures::Future;
 use reth_exex::{ExExContext, ExExEvent, ExExNotification};
 use reth_node_api::FullNodeComponents;
-use reth_provider::{DatabaseProviderFactory, HistoricalStateProviderRef};
+use reth_provider::{
+    providers::BundleStateProvider, DatabaseProviderFactory, HistoricalStateProviderRef,
+};
 use reth_tracing::tracing::{debug, info};
 use serde_json::Value;
 use shadow_reth_common::ShadowSqliteDb;
@@ -83,10 +85,17 @@ impl ShadowExEx {
                     // at the start of the notification chain. i.e. the state at the first block in
                     // the notification, pre-execution.
                     let database_provider = ctx.provider().database_provider_ro()?;
-                    let provider = HistoricalStateProviderRef::new(
-                        database_provider.tx_ref(),
-                        chain.first().number,
-                        database_provider.static_file_provider().clone(),
+                    let provider = BundleStateProvider::new(
+                        HistoricalStateProviderRef::new(
+                            database_provider.tx_ref(),
+                            chain
+                                .first()
+                                .number
+                                .checked_sub(1)
+                                .unwrap_or_else(|| chain.first().number),
+                            database_provider.static_file_provider().clone(),
+                        ),
+                        chain.state(),
                     );
 
                     // Use the database provider to create a [`ShadowDatabase`]. This is a
