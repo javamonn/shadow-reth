@@ -112,22 +112,23 @@ impl<'a, DB: StateProvider> ShadowExecutor<'a, DB> {
                 // Execute the transaction, do not verify it since we're shadowing certain contracts
                 // which may not be valid.
                 fill_tx_env(self.evm.tx_mut(), &transaction, sender);
+                self.evm.tx_mut().nonce = None;
                 let ResultAndState { result, state } = match self.evm.transact() {
                     Ok(result) => result,
                     Err(err) => match err {
                         EVMError::Transaction(err) => {
-                            // debug!(%err, ?transaction, "Skipping invalid transaction");
+                            debug!(%err, ?transaction, "Skipping invalid transaction");
                             continue;
                         }
                         err => {
-                            // error!(%err, ?transaction, "Fatal error during transaction execution");
+                            error!(%err, ?transaction, "Fatal error during transaction execution");
                             continue;
                         }
                     },
                 };
 
                 // FIXME: why is result.logs always empty?
-                // info!("Executed transaction: {:?}, {:?}", transaction.hash, result);
+                info!("Executed transaction: {:?}, {:?}", transaction.hash, result);
 
                 // Commit the state changes to the shadowed database, and store the result of the
                 // transaction.
