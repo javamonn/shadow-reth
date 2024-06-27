@@ -128,7 +128,7 @@ impl<'a, DB: StateProvider> ShadowExecutor<'a, DB> {
                 };
 
                 // FIXME: why is result.logs always empty?
-                info!("Executed transaction: {:?}, {:?}", transaction.hash, result);
+                // info!("Executed transaction: {:?}, {:?}", transaction.hash, result);
 
                 // Commit the state changes to the shadowed database, and store the result of the
                 // transaction.
