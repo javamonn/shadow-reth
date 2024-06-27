@@ -112,7 +112,7 @@ impl<'a, DB: StateProvider> ShadowExecutor<'a, DB> {
                 // Execute the transaction, do not verify it since we're shadowing certain contracts
                 // which may not be valid.
                 fill_tx_env(self.evm.tx_mut(), &transaction, sender);
-                let ResultAndState { result, state } = match self.evm.transact_preverified() {
+                let ResultAndState { result, state } = match self.evm.transact() {
                     Ok(result) => result,
                     Err(err) => match err {
                         EVMError::Transaction(err) => {
