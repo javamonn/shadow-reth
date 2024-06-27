@@ -19,7 +19,7 @@ pub(crate) struct ShadowDatabase<DB> {
     shadow: ShadowContracts,
 }
 
-impl<DB> ShadowDatabase<DB> {
+impl<DB: StateProvider> ShadowDatabase<DB> {
     /// Create new State with generic StateProvider.
     pub(crate) const fn new(db: DB, shadow: ShadowContracts) -> Self {
         Self { db, shadow }
