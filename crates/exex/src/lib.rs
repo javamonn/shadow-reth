@@ -87,7 +87,7 @@ impl ShadowExEx {
                     // the notification, pre-execution.
                     let database_provider = ctx.provider().database_provider_ro()?;
 
-                    info!("best_block_number: {:?}", database_provider.best_block_number());
+                    info!("last_block_number: {:?}", database_provider.last_block_number());
 
                     let blocks = chain.blocks_iter().collect::<Vec<_>>();
 
@@ -96,14 +96,14 @@ impl ShadowExEx {
                         .into_iter()
                         .map(|block| {
                             if database_provider
-                                .best_block_number()
-                                .map(|best_block_number| chain.first().number > best_block_number)
+                                .last_block_number()
+                                .map(|last_block_number| chain.first().number > last_block_number)
                                 .unwrap_or(true)
                             {
                                 debug!(
-                                    "Committing peak: chain first {:?}, best_block_number: {:?}",
+                                    "Committing peak: chain first {:?}, last_block_number: {:?}",
                                     chain.first().number,
-                                    database_provider.best_block_number()
+                                    database_provider.last_block_number()
                                 );
                                 unimplemented!();
                             } else {
