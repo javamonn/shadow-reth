@@ -7,7 +7,6 @@ use reth_revm::{
     primitives::{AccountInfo, Bytecode},
     Database,
 };
-use reth_tracing::tracing::{debug, error, info};
 
 use crate::contracts::ShadowContracts;
 
@@ -50,8 +49,6 @@ impl<DB: StateProvider> Database for ShadowDatabase<DB> {
     /// `None` if it doesn't, or an error if encountered.
     fn basic(&mut self, address: Address) -> Result<Option<AccountInfo>, Self::Error> {
         DatabaseRef::basic_ref(self, address)
-            .inspect(|r| debug!("Basic account info for {:?}: {:?}", address, r))
-            .inspect_err(|e| info!("Failed to get basic account info: {:?}", e))
     }
 
     /// Retrieves the bytecode associated with a given code hash.
@@ -59,7 +56,6 @@ impl<DB: StateProvider> Database for ShadowDatabase<DB> {
     /// Returns `Ok` with the bytecode if found, or the default bytecode otherwise.
     fn code_by_hash(&mut self, code_hash: B256) -> Result<Bytecode, Self::Error> {
         DatabaseRef::code_by_hash_ref(self, code_hash)
-            .inspect_err(|e| info!("Failed to get code hash: {:?}", e))
     }
 
     /// Retrieves the storage value at a specific index for a given address.
@@ -67,8 +63,6 @@ impl<DB: StateProvider> Database for ShadowDatabase<DB> {
     /// Returns `Ok` with the storage value, or the default value if not found.
     fn storage(&mut self, address: Address, index: U256) -> Result<U256, Self::Error> {
         DatabaseRef::storage_ref(self, address, index)
-            .inspect(|r| debug!("Storage value for {:?} at {:?}: {:?}", address, index, r))
-            .inspect_err(|e| info!("Failed to get storage info: {:?}", e))
     }
 
     /// Retrieves the block hash for a given block number.
@@ -88,20 +82,15 @@ impl<DB: StateProvider> DatabaseRef for ShadowDatabase<DB> {
     /// Returns `Ok` with `Some(AccountInfo)` if the account exists,
     /// `None` if it doesn't, or an error if encountered.
     fn basic_ref(&self, address: Address) -> Result<Option<AccountInfo>, Self::Error> {
-        Ok(self
-            .db
-            .basic_account(address)
-            .inspect(|r| debug!("Basic account info for {:?}: {:?}", address, r))
-            .inspect_err(|e| info!("Failed to get basic account info: {:?}", e))?
-            .map(|account| AccountInfo {
-                balance: account.balance,
-                nonce: account.nonce,
-                code_hash: self
-                    .shadow
-                    .code_hash(&address) // Check if the address is a shadow contract, and use that code hash
-                    .unwrap_or_else(|| account.bytecode_hash.unwrap_or(KECCAK_EMPTY)),
-                code: self.shadow.code(&address),
-            }))
+        Ok(self.db.basic_account(address)?.map(|account| AccountInfo {
+            balance: account.balance,
+            nonce: account.nonce,
+            code_hash: self
+                .shadow
+                .code_hash(&address) // Check if the address is a shadow contract, and use that code hash
+                .unwrap_or_else(|| account.bytecode_hash.unwrap_or(KECCAK_EMPTY)),
+            code: self.shadow.code(&address),
+        }))
     }
 
     /// Retrieves the bytecode associated with a given code hash.
