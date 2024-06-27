@@ -95,7 +95,7 @@ impl ShadowExEx {
                                 .unwrap_or_else(|| chain.first().number),
                             database_provider.static_file_provider().clone(),
                         ),
-                        chain.state(),
+                        chain.state_at_block(chain.first().number).unwrap(),
                     );
 
                     // Use the database provider to create a [`ShadowDatabase`]. This is a
